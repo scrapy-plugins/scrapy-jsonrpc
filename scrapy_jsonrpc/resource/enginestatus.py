@@ -1,5 +1,6 @@
-from scrapy.webservice import JsonResource
 from scrapy.utils.engine import get_engine_status
+from scrapy_jsonrpc.webservice import JsonResource
+
 
 class EngineStatusResource(JsonResource):
 

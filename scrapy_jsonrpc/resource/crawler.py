@@ -1,4 +1,5 @@
-from scrapy.webservice import JsonRpcResource
+from scrapy_jsonrpc.webservice import JsonRpcResource
+
 
 class CrawlerResource(JsonRpcResource):
 

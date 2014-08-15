@@ -7,8 +7,8 @@ import json
 import traceback
 from six.moves import urllib
 
-from scrapy.utils.serialize import ScrapyJSONDecoder
 from scrapy.utils.python import unicode_to_str
+from scrapy_jsonrpc.serialize import ScrapyJSONDecoder
 
 
 # JSON-RPC 2.0 errors, as defined in:
