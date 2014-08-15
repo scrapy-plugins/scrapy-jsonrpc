@@ -3,11 +3,13 @@ This module implements the JSON-RPC 2.0 protocol, as defined in:
 http://groups.google.com/group/json-rpc/web/json-rpc-2-0
 """
 
-import urllib
 import json
 import traceback
+from six.moves import urllib
 
 from scrapy.utils.serialize import ScrapyJSONDecoder
+from scrapy.utils.python import unicode_to_str
+
 
 # JSON-RPC 2.0 errors, as defined in:
 class jsonrpc_errors:
@@ -16,6 +18,7 @@ class jsonrpc_errors:
     METHOD_NOT_FOUND = -32601
     INVALID_PARAMS = -32602
     INTERNAL_ERROR = -32603
+
 
 class JsonRpcError(Exception):
 
@@ -28,13 +31,15 @@ class JsonRpcError(Exception):
     def __str__(self):
         return "JSON-RPC error (code %d): %s" % (self.code, self.message)
 
+
 def jsonrpc_client_call(url, method, *args, **kwargs):
     """Execute a JSON-RPC call on the given url"""
-    _urllib = kwargs.pop('_urllib', urllib)
     if args and kwargs:
         raise ValueError("Pass *args or **kwargs but not both to jsonrpc_client_call")
     req = {'jsonrpc': '2.0', 'method': method, 'params': args or kwargs, 'id': 1}
-    res = json.loads(_urllib.urlopen(url, json.dumps(req)).read())
+    data = unicode_to_str(json.dumps(req))
+    body = urllib.request.urlopen(url, data).read()
+    res = json.loads(body.decode('utf-8'))
     if 'result' in res:
         return res['result']
     elif 'error' in res:
@@ -43,6 +48,7 @@ def jsonrpc_client_call(url, method, *args, **kwargs):
     else:
         msg = "JSON-RPC response must contain 'result' or 'error': %s" % res
         raise ValueError(msg)
+
 
 def jsonrpc_server_call(target, jsonrpc_request, json_decoder=None):
     """Execute the given JSON-RPC request (as JSON-encoded string) on the given
@@ -54,8 +60,8 @@ def jsonrpc_server_call(target, jsonrpc_request, json_decoder=None):
     try:
         req = json_decoder.decode(jsonrpc_request)
     except Exception as e:
-        return jsonrpc_error(None, jsonrpc_errors.PARSE_ERROR, 'Parse error', \
-            traceback.format_exc())
+        return jsonrpc_error(None, jsonrpc_errors.PARSE_ERROR, 'Parse error',
+                             traceback.format_exc())
 
     try:
         id, methname = req['id'], req['method']
@@ -76,6 +82,7 @@ def jsonrpc_server_call(target, jsonrpc_request, json_decoder=None):
         return jsonrpc_error(id, jsonrpc_errors.INTERNAL_ERROR, str(e), \
             traceback.format_exc())
 
+
 def jsonrpc_error(id, code, message, data=None):
     """Create JSON-RPC error response"""
     return {
@@ -87,6 +94,7 @@ def jsonrpc_error(id, code, message, data=None):
         },
         'id': id,
     }
+
 
 def jsonrpc_result(id, result):
     """Create JSON-RPC result response"""

@@ -1,25 +1,25 @@
-import unittest, json
+import json
+import unittest
 from io import BytesIO
+from mock import patch
+from six.moves import urllib
 
 from scrapy.utils.jsonrpc import jsonrpc_client_call, jsonrpc_server_call, \
     JsonRpcError, jsonrpc_errors
 from scrapy.utils.serialize import ScrapyJSONDecoder
+from scrapy.utils.python import unicode_to_str, str_to_unicode
 from tests.test_utils_serialize import CrawlerMock
 
-class urllib_mock(object):
-    def __init__(self, result=None, error=None):
-        response = {}
-        if result:
-            response.update(result=result)
-        if error:
-            response.update(error=error)
-        self.response = json.dumps(response)
-        self.request = None
 
-    def urlopen(self, url, request):
-        self.url = url
-        self.request = request
-        return BytesIO(self.response)
+def _umock(result=None, error=None):
+    response = {}
+    if result is not None:
+        response.update(result=result)
+    if error is not None:
+        response.update(error=error)
+    return BytesIO(unicode_to_str(json.dumps(response)))
+
+
 
 class TestTarget(object):
 
@@ -28,6 +28,7 @@ class TestTarget(object):
 
     def exception(self):
         raise Exception("testing-errors")
+
 
 class JsonRpcUtilsTestCase(unittest.TestCase):
 
@@ -39,26 +40,35 @@ class JsonRpcUtilsTestCase(unittest.TestCase):
         self.assertRaises(ValueError, jsonrpc_client_call, 'url', 'test', 'one', kw=123)
 
     def test_jsonrpc_client_call_request(self):
-        ul = urllib_mock(1)
-        jsonrpc_client_call('url', 'test', 'one', 2, _urllib=ul)
-        req = json.loads(ul.request)
-        assert 'id' in req
-        self.assertEqual(ul.url, 'url')
-        self.assertEqual(req['jsonrpc'], '2.0')
-        self.assertEqual(req['method'], 'test')
-        self.assertEqual(req['params'], ['one', 2])
+        sentcall = {}
+        def _urlopen(url, data):
+            sentcall['url'] = url
+            sentcall['data'] = data
+            return _umock(1)
 
-    def test_jsonrpc_client_call_response(self):
-        ul = urllib_mock()
+        with patch.object(urllib.request, 'urlopen', _urlopen):
+            jsonrpc_client_call('url', 'test', 'one', 2)
+            req = json.loads(str_to_unicode(sentcall['data']))
+            assert 'id' in req
+            self.assertEqual(sentcall['url'], 'url')
+            self.assertEqual(req['jsonrpc'], '2.0')
+            self.assertEqual(req['method'], 'test')
+            self.assertEqual(req['params'], ['one', 2])
+
+    @patch.object(urllib.request, 'urlopen')
+    def test_jsonrpc_client_call_response(self, urlopen_mock):
+        urlopen_mock.return_value = _umock()
         # must return result or error
-        self.assertRaises(ValueError, jsonrpc_client_call, 'url', 'test', _urllib=ul)
-        ul = urllib_mock(result={'one': 1})
-        self.assertEquals(jsonrpc_client_call('url', 'test', _urllib=ul), {'one': 1})
-        ul = urllib_mock(error={'code': 123, 'message': 'hello', 'data': 'some data'})
+        self.assertRaises(ValueError, jsonrpc_client_call, 'url', 'test')
+        urlopen_mock.return_value = _umock(result={'one': 1})
+        self.assertEquals(jsonrpc_client_call('url', 'test'), {'one': 1})
+        urlopen_mock.return_value = _umock(error={'code': 123,
+                                                  'message': 'hello',
+                                                  'data': 'some data'})
 
         raised = False
         try:
-            jsonrpc_client_call('url', 'test', _urllib=ul)
+            jsonrpc_client_call('url', 'test')
         except JsonRpcError as e:
             raised = True
             self.assertEqual(e.code, 123)
@@ -70,26 +80,26 @@ class JsonRpcUtilsTestCase(unittest.TestCase):
 
     def test_jsonrpc_server_call(self):
         t = TestTarget()
-        r = jsonrpc_server_call(t, 'invalid json data', self.json_decoder)
+        r = jsonrpc_server_call(t, u'invalid json data', self.json_decoder)
         assert 'error' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] is None
         self.assertEqual(r['error']['code'], jsonrpc_errors.PARSE_ERROR)
         assert 'Traceback' in r['error']['data']
 
-        r = jsonrpc_server_call(t, '{"test": "test"}', self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"test": "test"}', self.json_decoder)
         assert 'error' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] is None
         self.assertEqual(r['error']['code'], jsonrpc_errors.INVALID_REQUEST)
 
-        r = jsonrpc_server_call(t, '{"method": "notfound", "id": 1}', self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"method": "notfound", "id": 1}', self.json_decoder)
         assert 'error' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] == 1
         self.assertEqual(r['error']['code'], jsonrpc_errors.METHOD_NOT_FOUND)
 
-        r = jsonrpc_server_call(t, '{"method": "exception", "id": 1}', self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"method": "exception", "id": 1}', self.json_decoder)
         assert 'error' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] == 1
@@ -97,26 +107,22 @@ class JsonRpcUtilsTestCase(unittest.TestCase):
         assert 'testing-errors' in r['error']['message']
         assert 'Traceback' in r['error']['data']
 
-        r = jsonrpc_server_call(t, '{"method": "call", "id": 2}', self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"method": "call", "id": 2}', self.json_decoder)
         assert 'result' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] == 2
         self.assertEqual(r['result'], ([], {}))
 
-        r = jsonrpc_server_call(t, '{"method": "call", "params": [456, 123], "id": 3}', \
-            self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"method": "call", "params": [456, 123], "id": 3}',
+                                self.json_decoder)
         assert 'result' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] == 3
         self.assertEqual(r['result'], ([456, 123], {}))
 
-        r = jsonrpc_server_call(t, '{"method": "call", "params": {"data": 789}, "id": 3}', \
-            self.json_decoder)
+        r = jsonrpc_server_call(t, u'{"method": "call", "params": {"data": 789}, "id": 3}',
+                                self.json_decoder)
         assert 'result' in r
         assert r['jsonrpc'] == '2.0'
         assert r['id'] == 3
         self.assertEqual(r['result'], ([], {'data': 789}))
-
-if __name__ == "__main__":
-    unittest.main()
-
