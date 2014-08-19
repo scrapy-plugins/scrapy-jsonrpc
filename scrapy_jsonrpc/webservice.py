@@ -1,27 +1,12 @@
-"""
-Scrapy web services extension
-
-See docs/topics/webservice.rst
-"""
-
 from twisted.web import server, resource
 
 from scrapy.exceptions import NotConfigured
 from scrapy import log, signals
-from scrapy.utils.misc import load_object
 from scrapy.utils.reactor import listen_tcp
-from scrapy.utils.conf import build_component_list
 
 from scrapy_jsonrpc.jsonrpc import jsonrpc_server_call
 from scrapy_jsonrpc.serialize import ScrapyJSONEncoder, ScrapyJSONDecoder
 from scrapy_jsonrpc.txweb import JsonResource as JsonResource_
-
-
-WEBSERVICE_RESOURCES_BASE = {
-    'scrapy_jsonrpc.resource.crawler.CrawlerResource': 1,
-    'scrapy_jsonrpc.resource.enginestatus.EngineStatusResource': 1,
-    'scrapy_jsonrpc.resource.stats.StatsResource': 1,
-}
 
 
 class JsonResource(JsonResource_):
@@ -59,6 +44,14 @@ class JsonRpcResource(JsonResource):
         return self._target
 
 
+class CrawlerResource(JsonRpcResource):
+
+    ws_name = 'crawler'
+
+    def __init__(self, crawler):
+        JsonRpcResource.__init__(self, crawler, crawler)
+
+
 class RootResource(JsonResource):
 
     def render_GET(self, txrequest):
@@ -73,20 +66,14 @@ class RootResource(JsonResource):
 class WebService(server.Site):
 
     def __init__(self, crawler):
-        if not crawler.settings.getbool('WEBSERVICE_ENABLED'):
+        if not crawler.settings.getbool('JSONRPC_ENABLED'):
             raise NotConfigured
         self.crawler = crawler
-        logfile = crawler.settings['WEBSERVICE_LOGFILE']
-        self.portrange = [int(x) for x in crawler.settings.getlist('WEBSERVICE_PORT', [6023, 6073])]
-        self.host = crawler.settings.get('WEBSERVICE_HOST', '127.0.0.1')
+        logfile = crawler.settings['JSONRPC_LOGFILE']
+        self.portrange = [int(x) for x in crawler.settings.getlist('JSONRPC_PORT', [6023, 6073])]
+        self.host = crawler.settings.get('JSONRPC_HOST', '127.0.0.1')
         root = RootResource(crawler)
-        reslist = build_component_list(
-            crawler.settings.get('WEBSERVICE_RESOURCES_BASE', WEBSERVICE_RESOURCES_BASE),
-            crawler.settings.get('WEBSERVICE_RESOURCES', {})
-        )
-        for res_cls in map(load_object, reslist):
-            res = res_cls(crawler)
-            root.putChild(res.ws_name, res)
+        root.putChild('crawler', CrawlerResource)
         server.Site.__init__(self, root, logPath=logfile)
         self.noisy = False
         crawler.signals.connect(self.start_listening, signals.engine_started)

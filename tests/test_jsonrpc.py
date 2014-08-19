@@ -4,11 +4,11 @@ from io import BytesIO
 from mock import patch
 from six.moves import urllib
 
-from scrapy.utils.jsonrpc import jsonrpc_client_call, jsonrpc_server_call, \
+from scrapy_jsonrpc.jsonrpc import jsonrpc_client_call, jsonrpc_server_call, \
     JsonRpcError, jsonrpc_errors
-from scrapy.utils.serialize import ScrapyJSONDecoder
+from scrapy_jsonrpc.serialize import ScrapyJSONDecoder
 from scrapy.utils.python import unicode_to_str, str_to_unicode
-from tests.test_utils_serialize import CrawlerMock
+from tests.test_serialize import CrawlerMock
 
 
 def _umock(result=None, error=None):
