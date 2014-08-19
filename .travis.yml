@@ -21,5 +21,5 @@ deploy:
   on:
     tags: true
     all_branches: true
-    repo: scrapy/w3lib
+    repo: scrapy/scrapy-jsonrpc
     condition: "$TOXENV == py27"
