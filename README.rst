@@ -3,7 +3,7 @@ scrapy-jsonrpc
 ==============
 
 scrapy-jsonrpc is an extension to control a running Scrapy web crawler via
-JSON-RPC. The service provides access to the main Crawlera object via the
+JSON-RPC. The service provides access to the main Crawler object via the
 `JSON-RPC 2.0`_ protocol.
 
 It's enabled by the `JSONRPC_ENABLED`_ setting. The web server will listen
