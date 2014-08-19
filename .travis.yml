@@ -1,0 +1,25 @@
+language: python
+python: 2.7
+env:
+  - TOXENV=py27
+install:
+  - "./.travis-workarounds.sh"
+  - pip install -U tox
+script: tox
+notifications:
+  irc:
+    use_notice: true
+    skip_join: true
+    channels:
+      - irc.freenode.org#scrapy
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: scrapy
+  password:
+    secure: Elvu7yTd8qnpC54XmrS9BoWDJ1d1k/433okfpefbimjnUbP2EjTpE64jE8aYdxwSVD96Wnqce7xnQI32MuBTPsx3SsGpE1W42z5Fjq1ln99Njw9WwmGeER4g8qhXtyU0b4RvoNXWMt68WwhGpe9zu+RByRQUQnaDyIy357ZnR+8=
+  on:
+    tags: true
+    all_branches: true
+    repo: scrapy/w3lib
+    condition: "$TOXENV == py27"

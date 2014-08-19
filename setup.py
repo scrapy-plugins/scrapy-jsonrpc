@@ -29,7 +29,7 @@ setup(
     ],
     install_requires=[
         'Twisted>=10.0.0',
-        'Scrapy>=0.25.0',
+        'Scrapy>=0.24.0',
         'six>=1.5.2',
     ],
 )
