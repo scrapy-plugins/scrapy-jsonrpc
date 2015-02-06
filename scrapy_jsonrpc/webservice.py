@@ -73,7 +73,7 @@ class WebService(server.Site):
         self.portrange = [int(x) for x in crawler.settings.getlist('JSONRPC_PORT', [6023, 6073])]
         self.host = crawler.settings.get('JSONRPC_HOST', '127.0.0.1')
         root = RootResource(crawler)
-        root.putChild('crawler', CrawlerResource)
+        root.putChild('crawler', CrawlerResource(self.crawler))
         server.Site.__init__(self, root, logPath=logfile)
         self.noisy = False
         crawler.signals.connect(self.start_listening, signals.engine_started)
