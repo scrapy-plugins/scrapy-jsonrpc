@@ -1,12 +1,17 @@
+import logging
+
 from twisted.web import server, resource
 
 from scrapy.exceptions import NotConfigured
-from scrapy import log, signals
+from scrapy import signals
 from scrapy.utils.reactor import listen_tcp
 
 from scrapy_jsonrpc.jsonrpc import jsonrpc_server_call
 from scrapy_jsonrpc.serialize import ScrapyJSONEncoder, ScrapyJSONDecoder
 from scrapy_jsonrpc.txweb import JsonResource as JsonResource_
+
+
+logger = logging.getLogger(__name__)
 
 
 class JsonResource(JsonResource_):
@@ -85,9 +90,9 @@ class WebService(server.Site):
 
     def start_listening(self):
         self.port = listen_tcp(self.portrange, self.host, self)
-        h = self.port.getHost()
-        log.msg(format='Web service listening on %(host)s:%(port)d',
-                level=log.DEBUG, host=h.host, port=h.port)
+        logger.debug(
+            'Web service listening on {host.host:s}:{host.port:d}'.format(
+                host=self.port.getHost()))
 
     def stop_listening(self):
         self.port.stopListening()
