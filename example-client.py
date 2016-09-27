@@ -55,13 +55,13 @@ def cmd_list_resources(args, opts):
 
 def cmd_get_spider_stats(args, opts):
     """get-spider-stats <spider> - get stats of a running spider"""
-    stats = jsonrpc_call(opts, 'stats', 'get_stats', args[0])
+    stats = jsonrpc_call(opts, 'crawler/stats', 'get_stats', args[0])
     for name, value in stats.items():
         print("%-40s %s" % (name, value))
 
 def cmd_get_global_stats(args, opts):
     """get-global-stats - get global stats"""
-    stats = jsonrpc_call(opts, 'stats', 'get_stats')
+    stats = jsonrpc_call(opts, 'crawler/stats', 'get_stats')
     for name, value in stats.items():
         print("%-40s %s" % (name, value))
 
