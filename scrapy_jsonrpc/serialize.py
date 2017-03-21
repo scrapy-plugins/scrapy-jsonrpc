@@ -3,9 +3,10 @@ import json
 import datetime
 import decimal
 
+import six
 from twisted.internet import defer
 
-from scrapy.spider import Spider
+from scrapy.spiders import Spider
 from scrapy.http import Request, Response
 from scrapy.item import BaseItem
 
@@ -58,7 +59,7 @@ class SpiderReferencer(object):
 
     def decode_references(self, obj):
         """Look for spider references and replace them with Spider objects"""
-        if isinstance(obj, basestring):
+        if isinstance(obj, six.string_types):
             return self.get_spider_from_reference(obj)
         elif isinstance(obj, dict):
             d = {}
